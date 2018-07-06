@@ -1,5 +1,3 @@
-#to run use:
-#python test_two_nets_img_xent_htri.py -a1 multi-resnet50m-v3 -a2 multi-resnet50m-v4 -d market1501 --save-dir log/tmp --evaluate --resume1 log/resnet50m-v3-market-salience-faster/best_model.pth.tar --resume2 log/resnet50m-v4-market-parsing-faster/best_model.pth.tar --use-salience --use-parsing
 from __future__ import print_function, absolute_import
 import os
 import sys
@@ -46,27 +44,7 @@ parser.add_argument('--cuhk03-classic-split', action='store_true',
 parser.add_argument('--use-metric-cuhk03', action='store_true',
                     help="whether to use cuhk03-metric (default: False)")
 # Optimization options
-parser.add_argument('--optim', type=str, default='adam', help="optimization algorithm (see optimizers.py)")
-parser.add_argument('--max-epoch', default=180, type=int,
-                    help="maximum epochs to run")
-parser.add_argument('--start-epoch', default=0, type=int,
-                    help="manual epoch number (useful on restarts)")
-parser.add_argument('--train-batch', default=32, type=int,
-                    help="train batch size")
 parser.add_argument('--test-batch', default=32, type=int, help="test batch size")
-parser.add_argument('--lr', '--learning-rate', default=0.0003, type=float,
-                    help="initial learning rate")
-parser.add_argument('--stepsize', default=60, type=int,
-                    help="stepsize to decay learning rate (>0 means this is enabled)")
-parser.add_argument('--gamma', default=0.1, type=float,
-                    help="learning rate decay")
-parser.add_argument('--weight-decay', default=5e-04, type=float,
-                    help="weight decay (default: 5e-04)")
-parser.add_argument('--margin', type=float, default=0.3, help="margin for triplet loss")
-parser.add_argument('--num-instances', type=int, default=4,
-                    help="number of instances per identity")
-parser.add_argument('--htri-only', action='store_true', default=False,
-                    help="if this is True, only htri loss is used in training")
 # Architecture
 parser.add_argument('-a1', '--arch1', type=str, default='resnet50', choices=models.get_names())
 parser.add_argument('-a2', '--arch2', type=str, default='resnet50', choices=models.get_names())
@@ -75,14 +53,11 @@ parser.add_argument('--print-freq', type=int, default=10, help="print frequency"
 parser.add_argument('--seed', type=int, default=1, help="manual seed")
 parser.add_argument('--resume1', type=str, default='', metavar='PATH')
 parser.add_argument('--resume2', type=str, default='', metavar='PATH')
-parser.add_argument('--evaluate', action='store_true', help="evaluation only")
 parser.add_argument('--eval-step', type=int, default=-1,
                     help="run evaluation for every N epochs (set to -1 to test after training)")
 parser.add_argument('--save-dir', type=str, default='log')
 parser.add_argument('--use-cpu', action='store_true', help="use cpu")
 parser.add_argument('--gpu-devices', default='0', type=str, help='gpu device ids for CUDA_VISIBLE_DEVICES')
-parser.add_argument('--use-salience', action='store_true', help="use salience maps for net training")
-parser.add_argument('--use-parsing', action='store_true', help="use semantic parsing for net training")
 parser.add_argument('--use-re-ranking', action='store_true', help="use re-ranking before evauating results")
 parser.add_argument('--save-rank', action='store_true', help="save top ranked results for each query")
 
@@ -113,10 +88,7 @@ def main():
     use_gpu = torch.cuda.is_available()
     if args.use_cpu: use_gpu = False
 
-    if not args.evaluate:
-        sys.stdout = Logger(osp.join(args.save_dir, 'log_train.txt'))
-    else:
-        sys.stdout = Logger(osp.join(args.save_dir, 'log_test.txt'))
+    sys.stdout = Logger(osp.join(args.save_dir, 'log_test.txt'))
     print("==========\nArgs:{}\n==========".format(args))
 
     if use_gpu:
@@ -132,13 +104,6 @@ def main():
         cuhk03_labeled=args.cuhk03_labeled, cuhk03_classic_split=args.cuhk03_classic_split,
     )
 
-    transform_train = T.Compose([
-        T.Random2DTranslation(args.height, args.width),
-        T.RandomHorizontalFlip(),
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-
     transform_test = T.Compose([
         T.Resize((args.height, args.width)),
         T.ToTensor(),
@@ -146,16 +111,10 @@ def main():
     ])
 
     pin_memory = True if use_gpu else False
-    use_salience = True if args.use_salience else False
-    use_parsing = True if args.use_parsing else False
+    use_salience = models.use_salience(name=args.arch)
+    use_parsing = models.use_parsing(name=args.arch)
     save_rank = True if args.save_rank else False
     use_re_ranking = True if args.use_re_ranking else False
-
-    trainloader = DataLoader(
-        ImageDataset(dataset.train, transform=transform_train, use_salience = use_salience, use_parsing = use_parsing, salience_base_path = dataset.salience_train_dir, parsing_base_path = dataset.parsing_train_dir),
-        batch_size=args.train_batch, shuffle=True, num_workers=args.workers,
-        pin_memory=pin_memory, drop_last=True,
-    )
 
     queryloader = DataLoader(
         ImageDataset(dataset.query, transform=transform_test, use_salience = use_salience, use_parsing = use_parsing, salience_base_path = dataset.salience_query_dir, parsing_base_path = dataset.parsing_query_dir),
@@ -296,10 +255,7 @@ def test(model1, model2, queryloader, galleryloader, use_gpu, ranks=[1, 5, 10, 2
     for r in ranks:
         print("Rank-{:<3}: {:.1%}".format(r, cmc[r-1]))
     print("------------------")
-    print("{:.1%}".format(mAP))
-    for r in ranks:
-        print("{:.1%}".format(cmc[r-1]))
-    print("------------------") 
+
     return cmc[0]
 
 if __name__ == '__main__':
