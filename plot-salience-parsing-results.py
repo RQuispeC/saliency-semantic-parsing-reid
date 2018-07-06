@@ -12,7 +12,7 @@ import models
 
 parser = argparse.ArgumentParser(description='Plot rank-5 results of S-ReID, SP-ReID and SSP-ReID')
 
-parser.add_argument('-d', '--dataset', type=str, default='market1501',choices=data_manager.get_names())
+parser.add_argument('-d', '--dataset', type=str, default='market1501')
 # Architecture
 parser.add_argument('-a', '--arch', type=str, default='resnet50')
 
