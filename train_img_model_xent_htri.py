@@ -79,8 +79,6 @@ parser.add_argument('--eval-step', type=int, default=-1,
 parser.add_argument('--save-dir', type=str, default='log')
 parser.add_argument('--use-cpu', action='store_true', help="use cpu")
 parser.add_argument('--gpu-devices', default='0', type=str, help='gpu device ids for CUDA_VISIBLE_DEVICES')
-parser.add_argument('--use-salience', action='store_true', help="use salience maps for net training")
-parser.add_argument('--use-parsing', action='store_true', help="use semantic parsing for net training")
 parser.add_argument('--use-re-ranking', action='store_true', help="use re-ranking before evauating results")
 parser.add_argument('--save-rank', action='store_true', help="save top ranked results for each query")
 
@@ -146,8 +144,8 @@ def main():
     ])
 
     pin_memory = True if use_gpu else False
-    use_salience = True if args.use_salience else False
-    use_parsing = True if args.use_parsing else False
+    use_salience = models.use_salience(name=args.arch)
+    use_parsing = models.use_parsing(name=args.arch)
     save_rank = True if args.save_rank else False
     use_re_ranking = True if args.use_re_ranking else False
 
@@ -386,10 +384,6 @@ def test(model, queryloader, galleryloader, use_gpu, ranks=[1, 5, 10, 20], use_s
     for r in ranks:
         print("Rank-{:<3}: {:.1%}".format(r, cmc[r-1]))
     print("------------------")
-    print("{:.1%}".format(mAP))
-    for r in ranks:
-        print("{:.1%}".format(cmc[r-1]))
-    print("------------------")    
 
     return cmc[0]
 
