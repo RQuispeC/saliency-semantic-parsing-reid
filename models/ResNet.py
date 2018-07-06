@@ -16,6 +16,8 @@ class ResNet50(nn.Module):
         self.base = nn.Sequential(*list(resnet50.children())[:-2])
         self.classifier = nn.Linear(2048, num_classes)
         self.feat_dim = 2048 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
 
     def forward(self, x):
         x = self.base(x)
@@ -56,6 +58,8 @@ class ResNet50_salience(nn.Module):
         self.layers5c = base[7][2]
         self.classifier = nn.Linear(3072, num_classes)
         self.feat_dim = 3072 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
     def forward(self, x, salience_masks):
         '''
@@ -79,7 +83,7 @@ class ResNet50_salience(nn.Module):
         x5c_feat = F.avg_pool2d(x5c, x5c.size()[2:]).view(x5c.size(0), x5c.size(1))
 
         #upsample feature map to the same size of salience/parsing maps
-        salience_feat = F.upsample(x4f, scale_factor = 8, mode = 'bilinear')
+        salience_feat = F.upsample(x4f, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
 
         #reshape tensors such that we can use matrix product as operator and avoid using loops
         channel_size = salience_feat.size()[2] * salience_feat.size()[3]
@@ -128,6 +132,8 @@ class ResNet50_parsing(nn.Module):
         self.layers5c = base[7][2]
         self.classifier = nn.Linear(7168, num_classes)
         self.feat_dim = 7168 # feature dimension
+        self.use_salience = False
+        self.use_parsing = True
 
     def forward(self, x, parsing_masks = None):
         '''
@@ -151,7 +157,7 @@ class ResNet50_parsing(nn.Module):
         x5c_feat = F.avg_pool2d(x5c, x5c.size()[2:]).view(x5c.size(0), x5c.size(1))
 
         #upsample feature map to the same size of salience/parsing maps
-        parsing_feat = F.upsample(x4f, scale_factor = 8, mode = 'bilinear')
+        parsing_feat = F.upsample(x4f, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
 
         channel_size = parsing_feat.size()[2] * parsing_feat.size()[3]
         parsing_masks = parsing_masks.view(parsing_masks.size()[0], parsing_masks.size()[1], channel_size)
@@ -201,6 +207,8 @@ class ResNet50M(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(3072, num_classes)
         self.feat_dim = 3072 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
 
     def forward(self, x):
         x1 = self.layers1(x)
@@ -257,6 +265,8 @@ class ResNet50M_salience(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(4096, num_classes)
         self.feat_dim = 4096 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
     def forward(self, x, salience_masks):
         '''
@@ -286,7 +296,7 @@ class ResNet50M_salience(nn.Module):
         midfeat = self.fc_fuse(midfeat)
 
         #upsample feature map to the same size of salience/parsing maps
-        salience_feat = F.upsample(x4f, scale_factor = 8, mode = 'bilinear')
+        salience_feat = F.upsample(x4f, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
 
         #reshape tensors such that we can use matrix product as operator and avoid using loops
         channel_size = salience_feat.size()[2] * salience_feat.size()[3]
@@ -338,6 +348,8 @@ class ResNet50M_parsing(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(8192, num_classes)
         self.feat_dim = 8192 # feature dimension
+        self.use_salience = False
+        self.use_parsing = True
 
     def forward(self, x, parsing_masks = None):
         '''
@@ -366,7 +378,7 @@ class ResNet50M_parsing(nn.Module):
         midfeat = self.fc_fuse(midfeat)
 
         #upsample feature map to the same size of salience/parsing maps
-        parsing_feat = F.upsample(x4f, scale_factor = 8, mode = 'bilinear')
+        parsing_feat = F.upsample(x4f, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
 
         channel_size = parsing_feat.size()[2] * parsing_feat.size()[3]
         parsing_masks = parsing_masks.view(parsing_masks.size()[0], parsing_masks.size()[1], channel_size)
@@ -412,6 +424,8 @@ class multi_ResNet50M_v1(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(3200, num_classes)
         self.feat_dim = 3200 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
     def forward(self, x, saliency_maps):
         x1 = self.layers1(x)
@@ -471,6 +485,8 @@ class multi_ResNet50M_v2(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(3200, num_classes)
         self.feat_dim = 3200 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
     def forward(self, x, saliency_maps):
         x1 = self.layers1(x)
@@ -534,12 +550,12 @@ class ResNet50M_layer4(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(2048, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(2048, num_classes)
         self.feat_dim = 2048 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
 
-    def forward(self, x, salience_masks = None, parsing_masks = None):
+    def forward(self, x):
         '''
         x: batch of input images
-        salince_mask: batch of 2D tensor
-        parsing_maks: batch of 3D tensor (various parsing masks per image)
         '''
         x1 = self.layers1(x)
         x2 = self.layers2(x1)
@@ -596,12 +612,13 @@ class multi_ResNet50M_v3_layer4(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(2048, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(3072, num_classes)
         self.feat_dim = 3072 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
-    def forward(self, x, salience_masks = None, parsing_masks = None):
+    def forward(self, x, salience_masks):
         '''
         x: batch of input images
         salince_mask: batch of 2D tensor
-        parsing_maks: batch of 3D tensor (various parsing masks per image)
         '''
         x1 = self.layers1(x)
         x2 = self.layers2(x1)
@@ -621,7 +638,7 @@ class multi_ResNet50M_v3_layer4(nn.Module):
         midfeat = self.fc_fuse(midfeat)
 
         #upsample feature map to the same size of salience/parsing maps
-        salience_feat = F.upsample(x4f, scale_factor = 8, mode = 'bilinear')
+        salience_feat = F.upsample(x4f, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
 
         channel_size = salience_feat.size()[2] * salience_feat.size()[3]
         salience_masks = salience_masks.cuda()
@@ -670,11 +687,12 @@ class multi_ResNet50M_v4_layer4(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(2048, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(7168, num_classes)
         self.feat_dim = 7168 # feature dimension
+        self.use_salience = False
+        self.use_parsing = True
 
-    def forward(self, x, salience_masks = None, parsing_masks = None):
+    def forward(self, x, parsing_masks):
         '''
         x: batch of input images
-        salince_mask: batch of 2D tensor
         parsing_maks: batch of 3D tensor (various parsing masks per image)
         '''
         x1 = self.layers1(x)
@@ -695,7 +713,7 @@ class multi_ResNet50M_v4_layer4(nn.Module):
         midfeat = self.fc_fuse(midfeat)
 
         #upsample feature map to the same size of salience/parsing maps
-        parsing_feat = F.upsample(x4f, scale_factor = 8, mode = 'bilinear')
+        parsing_feat = F.upsample(x4f, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
 
         channel_size = parsing_feat.size()[2] * parsing_feat.size()[3]
         parsing_masks = parsing_masks.view(parsing_masks.size()[0], parsing_masks.size()[1], channel_size)
@@ -766,12 +784,13 @@ class multi_ResNet50M_v3_conv_up(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(4096, num_classes)
         self.feat_dim = 4096 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
-    def forward(self, x, salience_masks = None, parsing_masks = None):
+    def forward(self, x, salience_masks = None):
         '''
         x: batch of input images
         salince_mask: batch of 2D tensor
-        parsing_maks: batch of 3D tensor (various parsing masks per image)
         '''
         x1 = self.layers1(x)
         x2 = self.layers2(x1)
@@ -855,8 +874,10 @@ class multi_ResNet50M_v4_conv_up(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(8192, num_classes)
         self.feat_dim = 8192 # feature dimension
+        self.use_salience = False
+        self.use_parsing = True
 
-    def forward(self, x, salience_masks = None, parsing_masks = None):
+    def forward(self, x, parsing_masks):
         '''
         x: batch of input images
         salince_mask: batch of 2D tensor
@@ -937,6 +958,8 @@ class ResNet50M_multi_layers_v1(nn.Module):
         self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
         self.classifier = nn.Linear(4608, num_classes)
         self.feat_dim = 4608 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
 
     def forward(self, x):
         x1 = self.layers1(x)

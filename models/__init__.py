@@ -27,6 +27,48 @@ __factory = {
     'resnext101-parsing': ResNeXt101_32x4d_parsing,
 }
 
+__use_salience = {
+    'resnet50': False,
+    'resnet50-salience': True,
+    'resnet50-parsing': False,
+    'densenet121': False,
+    'densenet121-salience': True,
+    'densenet121-parsing': False,
+    'resnet50m': False,
+    'resnet50m-salience': True,
+    'resnet50m-parsing': False,
+    'xception': False,
+    'xception-salience': True,
+    'xception-parsing': False,
+    'inceptionv4': False,
+    'inceptionv4-salience': True,
+    'inceptionv4-parsing': False,
+    'resnext101': False,
+    'resnext101-salience': True, 
+    'resnext101-parsing': False,
+}
+
+__use_parsing = {
+    'resnet50': False,
+    'resnet50-salience': False,
+    'resnet50-parsing': True,
+    'densenet121': False,
+    'densenet121-salience': False,
+    'densenet121-parsing': True,
+    'resnet50m': False,
+    'resnet50m-salience': False,
+    'resnet50m-parsing': True,
+    'xception': False,
+    'xception-salience': False,
+    'xception-parsing': True,
+    'inceptionv4': False,
+    'inceptionv4-salience': False,
+    'inceptionv4-parsing': True,
+    'resnext101': False,
+    'resnext101-salience': False,
+    'resnext101-parsing': True,
+}
+
 def get_names():
     return __factory.keys()
 
@@ -34,3 +76,13 @@ def init_model(name, *args, **kwargs):
     if name not in __factory.keys():
         raise KeyError("Unknown model: {}".format(name))
     return __factory[name](*args, **kwargs)
+
+def use_salience(name):
+    if name not in __factory.keys():
+        raise KeyError("Unknown model: {}".format(name))
+    return __use_salience[name]
+
+def use_parsing(name):
+    if name not in __factory.keys():
+        raise KeyError("Unknown model: {}".format(name))
+    return __use_parsing[name]

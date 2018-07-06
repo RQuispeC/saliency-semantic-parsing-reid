@@ -348,6 +348,8 @@ class InceptionV4ReID(nn.Module):
         self.features = base.features
         self.classifier = nn.Linear(1536, num_classes)
         self.feat_dim = 1536 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
 
     def forward(self, x):
         x = self.features(x)
@@ -381,6 +383,8 @@ class InceptionV4ReID_salience(nn.Module):
         self.x22 = base_features[21]
         self.classifier = nn.Linear(2560, num_classes)
         self.feat_dim = 2560 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
     def forward(self, x, salience_masks):
         x18 = self.x18(x)
@@ -393,7 +397,7 @@ class InceptionV4ReID_salience(nn.Module):
         x = x.view(x.size(0), -1)
 
         #upsample feature map to the same size of salience/parsing maps
-        salience_feat = F.upsample(x18, size=(128, 64), mode = 'bilinear')
+        salience_feat = F.upsample(x18, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
 
         #reshape tensors such that we can use matrix product as operator and avoid using loops
         channel_size = salience_feat.size()[2] * salience_feat.size()[3]
@@ -434,6 +438,8 @@ class InceptionV4ReID_parsing(nn.Module):
         self.x22 = base_features[21]
         self.classifier = nn.Linear(6656, num_classes)
         self.feat_dim = 6656 # feature dimension
+        self.use_salience = False
+        self.use_parsing = True
 
     def forward(self, x, parsing_masks):
         x18 = self.x18(x)
@@ -446,7 +452,7 @@ class InceptionV4ReID_parsing(nn.Module):
         x = x.view(x.size(0), -1)
 
         #upsample feature map to the same size of salience/parsing maps
-        parsing_feat = F.upsample(x18, size=(128, 64), mode = 'bilinear')
+        parsing_feat = F.upsample(x18, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
 
         #reshape tensors such that we can use matrix product as operator and avoid using loops
         channel_size = parsing_feat.size()[2] * parsing_feat.size()[3]

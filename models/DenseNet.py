@@ -15,6 +15,8 @@ class DenseNet121(nn.Module):
         self.base = densenet121.features
         self.classifier = nn.Linear(1024, num_classes)
         self.feat_dim = 1024 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
 
     def forward(self, x):
         x = self.base(x)
@@ -56,10 +58,12 @@ class DenseNet121_salience_beg(nn.Module):
         
         self.classifier = nn.Linear(1024, num_classes)
         self.feat_dim = 1024 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
     def forward(self, x, salience_masks):
         salience_masks = salience_masks.view(salience_masks.size(0), 1, salience_masks.size(1), salience_masks.size(2))
-        salience_masks = F.upsample(salience_masks, scale_factor = 2, mode = 'bilinear')
+        salience_masks = F.upsample(salience_masks, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
 
         x = x * salience_masks
         x = self.base0(x)
@@ -114,11 +118,13 @@ class DenseNet121_parsing_beg(nn.Module):
         
         self.classifier = nn.Linear(1024, num_classes)
         self.feat_dim = 1024 # feature dimension
+        self.use_salience = False
+        self.use_parsing = True
 
     def forward(self, x, parsing_masks):
         parsing_masks = parsing_masks[:, 0] #recover just foreground
         parsing_masks = parsing_masks.view(parsing_masks.size(0), 1, parsing_masks.size(1), parsing_masks.size(2))
-        parsing_masks = F.upsample(parsing_masks, scale_factor = 2, mode = 'bilinear')
+        parsing_masks = F.upsample(parsing_masks, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
 
         x = x * parsing_masks
         x = self.base0(x)
@@ -172,6 +178,8 @@ class DenseNet121_salience(nn.Module):
         
         self.classifier = nn.Linear(1280, num_classes)
         self.feat_dim = 1280 # feature dimension
+        self.use_salience = True
+        self.use_parsing = False
 
     def forward(self, x, salience_masks):
 
@@ -192,7 +200,7 @@ class DenseNet121_salience(nn.Module):
         x = x.view(x.size(0), -1)
         
         #upsample feature map to fit salience_masks
-        salience_feat = F.upsample(x7, scale_factor = 8, mode = 'bilinear')
+        salience_feat = F.upsample(x7, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
         #combine feature map with salience_masks (128, 64)
         channel_size = salience_feat.size()[2] * salience_feat.size()[3]
         salience_masks = salience_masks.cuda()
@@ -239,6 +247,8 @@ class DenseNet121_parsing(nn.Module):
         
         self.classifier = nn.Linear(2304, num_classes)
         self.feat_dim = 2304 # feature dimension
+        self.use_salience = False
+        self.use_parsing = True
 
     def forward(self, x, parsing_masks):
 
@@ -259,7 +269,7 @@ class DenseNet121_parsing(nn.Module):
         x = x.view(x.size(0), -1)
         
         #upsample feature map to fit salience_masks
-        parsing_feat = F.upsample(x7, scale_factor = 8, mode = 'bilinear')
+        parsing_feat = F.upsample(x7, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
         #combine feature map with salience_masks (128, 64)
         channel_size = parsing_feat.size()[2] * parsing_feat.size()[3]
         parsing_masks = parsing_masks.view(parsing_masks.size()[0], parsing_masks.size()[1], channel_size)

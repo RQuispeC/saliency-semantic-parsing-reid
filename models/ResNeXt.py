@@ -1414,6 +1414,8 @@ class ResNeXt101_32x4d(nn.Module):
         self.classifier = nn.Linear(2048, num_classes)
         self.feat_dim = 2048
         self.init_params()
+        self.use_salience = False
+        self.use_parsing = False
 
     def init_params(self):
         """Load ImageNet pretrained weights"""
@@ -1463,6 +1465,8 @@ class ResNeXt101_32x4d_salience(nn.Module):
         self.x5 = base[5]
         self.x6 = base[6]
         self.x7 = base[7]
+        self.use_salience = True
+        self.use_parsing = False
         
 
     def init_params(self):
@@ -1499,7 +1503,7 @@ class ResNeXt101_32x4d_salience(nn.Module):
         x = x.view(x.size(0), -1)
 
 #upsample feature map to fit salience_masks
-        salience_feat = F.upsample(x6, scale_factor = 8, mode = 'bilinear')
+        salience_feat = F.upsample(x6, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
         #combine feature map with salience_masks (128, 64)
         channel_size = salience_feat.size()[2] * salience_feat.size()[3]
         salience_masks = salience_masks.cuda()
@@ -1543,7 +1547,8 @@ class ResNeXt101_32x4d_parsing(nn.Module):
         self.x5 = base[5]
         self.x6 = base[6]
         self.x7 = base[7]
-        
+        self.use_salience = False
+        self.use_parsing = True
 
     def init_params(self):
         """Load ImageNet pretrained weights"""
@@ -1579,7 +1584,7 @@ class ResNeXt101_32x4d_parsing(nn.Module):
         x = x.view(x.size(0), -1)
 
         #upsample feature map to fit parsing_masks
-        parsing_feat = F.upsample(x6, scale_factor = 8, mode = 'bilinear')
+        parsing_feat = F.upsample(x6, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
         #combine feature map with parsing_masks (128, 64)
         channel_size = parsing_feat.size()[2] * parsing_feat.size()[3]
         parsing_masks = parsing_masks.view(parsing_masks.size()[0], parsing_masks.size()[1], channel_size)
@@ -1624,7 +1629,8 @@ class ResNeXt101_32x4d_salience_b5(nn.Module):
         self.x5 = base[5]
         self.x6 = base[6]
         self.x7 = base[7]
-        
+        self.use_salience = True
+        self.use_parsing = False
 
     def init_params(self):
         """Load ImageNet pretrained weights"""
@@ -1660,7 +1666,7 @@ class ResNeXt101_32x4d_salience_b5(nn.Module):
         x = x.view(x.size(0), -1)
 
 #upsample feature map to fit salience_masks
-        salience_feat = F.upsample(x5, scale_factor = 4, mode = 'bilinear')
+        salience_feat = F.upsample(x5, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
         #combine feature map with salience_masks (128, 64)
         channel_size = salience_feat.size()[2] * salience_feat.size()[3]
         salience_masks = salience_masks.cuda()
@@ -1696,6 +1702,8 @@ class ResNeXt101_64x4d(nn.Module):
         self.classifier = nn.Linear(2048, num_classes)
         self.feat_dim = 2048
         self.init_params()
+        self.use_salience = False
+        self.use_parsing = False
 
     def init_params(self):
         """Load ImageNet pretrained weights"""

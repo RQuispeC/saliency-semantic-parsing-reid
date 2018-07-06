@@ -172,6 +172,8 @@ class Xception(nn.Module):
         self.exitflow = ExitFlow(728, nchannels=[728, 1024, 1536, 2048])
         self.classifier = nn.Linear(2048, num_classes)
         self.feat_dim = 2048
+        self.use_salience = False
+        self.use_parsing = False
 
     def forward(self, x):
         x = self.entryflow(x)
@@ -205,13 +207,15 @@ class Xception_salience(nn.Module):
         self.exitflow = ExitFlow(728, nchannels=[728, 1024, 1536, 2048])
         self.classifier = nn.Linear(2776, num_classes)
         self.feat_dim = 2776
+        self.use_salience = True
+        self.use_parsing = False
 
     def forward(self, x, salience_masks):
         x = self.entryflow(x)
         xm = self.midflow(x)
         x = self.exitflow(xm)
 
-        salience_feat = F.upsample(xm, scale_factor = 8, mode = 'bilinear')
+        salience_feat = F.upsample(xm, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
         channel_size = salience_feat.size()[2] * salience_feat.size()[3]
         salience_masks = salience_masks.cuda()
         salience_masks = salience_masks.view(salience_masks.size()[0], channel_size, 1)
@@ -248,13 +252,15 @@ class Xception_parsing(nn.Module):
         self.exitflow = ExitFlow(728, nchannels=[728, 1024, 1536, 2048])
         self.classifier = nn.Linear(5688, num_classes)
         self.feat_dim = 5688
+        self.use_salience = False
+        self.use_parsing = True
 
     def forward(self, x, parsing_masks):
         x = self.entryflow(x)
         xm = self.midflow(x)
         x = self.exitflow(xm)
 
-        parsing_feat = F.upsample(xm, scale_factor = 8, mode = 'bilinear')
+        parsing_feat = F.upsample(xm, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
         channel_size = parsing_feat.size()[2] * parsing_feat.size()[3]
         parsing_masks = parsing_masks.view(parsing_masks.size()[0], parsing_masks.size()[1], channel_size)
         parsing_masks = torch.transpose(parsing_masks, 1, 2)
