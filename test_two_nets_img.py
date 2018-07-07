@@ -111,8 +111,9 @@ def main():
     ])
 
     pin_memory = True if use_gpu else False
-    use_salience = models.use_salience(name=args.arch)
-    use_parsing = models.use_parsing(name=args.arch)
+    #arch1 should use salience, and arch2 should use semantic parsing
+    use_salience = models.use_salience(name=args.arch1)
+    use_parsing = models.use_parsing(name=args.arch2)
     save_rank = True if args.save_rank else False
     use_re_ranking = True if args.use_re_ranking else False
 
