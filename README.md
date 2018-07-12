@@ -19,6 +19,7 @@ IN THE DOCUMENTATION
 - add image of architecture
 - add results summary
 - show dependencies
+- decide whether we should divide readme in train and test
 ### Results
 All models are initialized with imagenet pretrained weights.
 Results are presented using the format of `Rank1 (mAP)` in the following tables
