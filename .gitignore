@@ -3,6 +3,7 @@
 log
 data
 Makefile
+saved-models
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
