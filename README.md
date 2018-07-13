@@ -19,7 +19,7 @@ BIBTEX FORMAT CITE
 
 This repo explains dependencies, data preparation, training and testing for every module of our network:
 
-![proposed framework](framework.pdf)
+![proposed framework](framework.png)
 
 ## Dependecies
 The implementation has been tested under a Linux enviroment with:
