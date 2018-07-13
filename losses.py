@@ -8,7 +8,6 @@ from torch import nn
 Shorthands for loss:
 - CrossEntropyLabelSmooth: xent
 - TripletLoss: htri
-- CenterLoss: cent
 """
 __all__ = ['DeepSupervision', 'CrossEntropyLabelSmooth', 'TripletLoss', 'CenterLoss', 'WeightedTripletLoss']
 
