@@ -9,6 +9,9 @@ import torchvision
 __all__ = ['ResNet50', 'ResNet50_salience', 'ResNet50_parsing', 'ResNet50M', 'ResNet50M_salience', 'ResNet50M_parsing']
 
 class ResNet50(nn.Module):
+    """
+    Code imported from https://github.com/KaiyangZhou/deep-person-reid
+    """
     def __init__(self, num_classes, loss={'xent'}, **kwargs):
         super(ResNet50, self).__init__()
         self.loss = loss

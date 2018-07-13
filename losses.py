@@ -33,6 +33,8 @@ class CrossEntropyLabelSmooth(nn.Module):
     Args:
         num_classes (int): number of classes.
         epsilon (float): weight.
+
+    Code imported from https://github.com/KaiyangZhou/deep-person-reid
     """
     def __init__(self, num_classes, epsilon=0.1, use_gpu=True):
         super(CrossEntropyLabelSmooth, self).__init__()

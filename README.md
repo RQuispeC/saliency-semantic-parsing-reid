@@ -1,13 +1,6 @@
 TODO:
-IN THE CODE
-comment source code for parts that where based on other people references as well as comment what other people does
-
-UPLOAD TRAINED MODELS
-UPLOAD SALIENCE AND SEMANTIC PARSING IMAGES
-
-IN THE DOCUMENTATION
-- add Makefile to train-all nets
-- add image of architecture
+* add bibtex cite and link to paper
+* review documentation before changing repo to public
 
 # Enhanced Person Re-Identification Based on Saliency and Semantic Parsing with Deep Neural Network Models
 
@@ -129,7 +122,7 @@ For training we have two scripts: `train_img_model_xent.py` for training with cr
 
 We use the parameter `-a` to specify the architecture, we support:
 
-* ResNet[3]: Use `-a resnet`
+* ResNet[3]: Use `-a resnet50`
 * ResNet-M[4]: Use `-a resnet50m`
 * DenseNet[5]: use `-a densenet121`
 * Inception-V4[6]: Use `-a inceptionv4`

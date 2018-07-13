@@ -1,5 +1,7 @@
-#!/usr/bin/env python2/python3
-# -*- coding: utf-8 -*-
+"""
+Code imported from https://github.com/zhunzhong07/person-re-ranking/
+"""
+
 """
 Created on Mon Jun 26 14:46:56 2017
 @author: luohao

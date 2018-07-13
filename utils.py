@@ -7,6 +7,9 @@ import json
 import os.path as osp
 
 import torch
+"""
+Code imported from https://github.com/KaiyangZhou/deep-person-reid
+"""
 
 def mkdir_if_missing(directory):
     if not osp.exists(directory):

@@ -162,6 +162,9 @@ class Xception(nn.Module):
 
     Reference:
     Chollet. Xception: Deep Learning with Depthwise Separable Convolutions. CVPR 2017.
+
+    Code imported from https://github.com/KaiyangZhou/deep-person-reid
+    
     """
     def __init__(self, num_classes, loss={'xent'}, num_mid_flows=8, **kwargs):
         super(Xception, self).__init__()

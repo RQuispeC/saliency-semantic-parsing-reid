@@ -1,4 +1,7 @@
 import torch
+"""
+Code imported from https://github.com/KaiyangZhou/deep-person-reid
+"""
 
 __all__ = ['init_optim']
 

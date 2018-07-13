@@ -119,6 +119,9 @@ class ImageDataset(Dataset):
             return img, pid, camid, img_path
 
 class VideoDataset(Dataset):
+    """
+    Code imported from https://github.com/KaiyangZhou/deep-person-reid
+    """
     """Video Person ReID Dataset.
     Note batch data has shape (batch, seq_len, channel, height, width).
     """

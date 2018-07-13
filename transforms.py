@@ -13,6 +13,8 @@ class Random2DTranslation(object):
         height (int): target height.
         width (int): target width.
         p (float): probability of performing this transformation. Default: 0.5.
+
+    Code imported from https://github.com/KaiyangZhou/deep-person-reid
     """
     def __init__(self, height, width, p=0.5, interpolation=Image.BILINEAR):
         self.height = height

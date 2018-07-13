@@ -8,6 +8,9 @@ import torchvision
 __all__ = ['DenseNet121', 'DenseNet121_salience', 'DenseNet121_parsing']
 
 class DenseNet121(nn.Module):
+    """
+    Code imported from https://github.com/KaiyangZhou/deep-person-reid
+    """
     def __init__(self, num_classes, loss={'xent'}, **kwargs):
         super(DenseNet121, self).__init__()
         self.loss = loss
