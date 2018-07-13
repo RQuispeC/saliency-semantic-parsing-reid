@@ -1006,12 +1006,8 @@ class PRID(object):
 
 __factory = {
     'market1501': Market1501,
-    'cuhk03': CUHK03,
     'cuhk03-np': CUHK03_NP,
     'dukemtmcreid': DukeMTMCreID,
-    'mars': Mars,
-    'ilidsvid': iLIDSVID,
-    'prid': PRID,
 }
 
 def get_names():
