@@ -8,6 +8,7 @@ import torch
 from torch.utils.data import Dataset
 
 import cv2
+import random
 
 def read_image(img_path):
     """Keep reading image until succeed.
@@ -23,6 +24,21 @@ def read_image(img_path):
             print("IOError incurred when reading '{}'. Will redo. Don't worry. Just chill.".format(img_path))
             pass
     return img
+
+def read_numpy_file(file_path):
+    """Keep reading file until succeed.
+    This can avoid IOError incurred by heavy IO process."""
+    got_file = False
+    if not osp.exists(file_path):
+        raise IOError("{} does not exist".format(file_path))
+    while not got_file:
+        try:
+            file = np.load(file_path)
+            got_file = True
+        except IOError:
+            print("IOError incurred when reading '{}'. Will redo. Don't worry. Just chill.".format(file_path))
+            pass
+    return file
 
 def get_image_name(img_path):
     name = img_path.split('/')[-1] #get name
@@ -83,15 +99,59 @@ def preprocess_salience(img):
     img = cv2.resize(img, (64, 128))
     return img
 
+def plot_parsing_augmentation(filename, img, img_trans, img_par, img_par_trans):
+    import pylab as plt 
+    import gc
+    fig = plt.figure(figsize = (20, 30))
+
+    a = fig.add_subplot(2, 6, 1)
+    plt.imshow(img)
+    a = fig.add_subplot(2, 6, 7)
+    plt.imshow(img_trans)
+    for i, elem in enumerate(img_par):
+        a = fig.add_subplot(2, 6, 2 + i)
+        plt.imshow(elem)
+
+    for i, elem in enumerate(img_par_trans):
+        a = fig.add_subplot(2, 6, 8 + i)
+        plt.imshow(elem)
+
+    fig.savefig('log-fix/figs/parsing/' + filename + '.jpg', bbox_inches='tight')
+    fig.clf()
+    plt.close()
+    del a
+    gc.collect()
+
+def plot_salience_augmentation(filename, img, img_trans, img_sal, img_sal_trans):
+    import pylab as plt 
+    import gc
+    fig = plt.figure(figsize = (20, 20))
+
+    a = fig.add_subplot(2, 2, 1)
+    plt.imshow(img)
+    a = fig.add_subplot(2, 2, 2)
+    plt.imshow(img_trans)
+    a = fig.add_subplot(2, 2, 3)
+    plt.imshow(img_sal)
+    a = fig.add_subplot(2, 2, 4)
+    plt.imshow(img_sal_trans)
+
+    fig.savefig('log-fix/figs/salience/' + filename + '.jpg', bbox_inches='tight')
+    fig.clf()
+    plt.close()
+    del a
+    gc.collect()
+
 class ImageDataset(Dataset):
     """Image Person ReID Dataset"""
-    def __init__(self, dataset, transform=None, salience_base_path = 'salience/', use_salience = False, parsing_base_path = 'parsing/', use_parsing = False):
+    def __init__(self, dataset, transform=None, salience_base_path = 'salience/', use_salience = False, parsing_base_path = 'parsing/', use_parsing = False, transform_salience_parsing = None):
         self.dataset = dataset
         self.transform = transform
         self.use_salience = use_salience
         self.use_parsing = use_parsing
         self.salience_base_path = salience_base_path
         self.parsing_base_path = parsing_base_path
+        self.transform_salience_parsing = transform_salience_parsing
 
     def __len__(self):
         return len(self.dataset)
@@ -99,21 +159,62 @@ class ImageDataset(Dataset):
     def __getitem__(self, index):
         img_path, pid, camid = self.dataset[index]
         img = read_image(img_path)
+        seed = random.randint(0,2**32)
         if self.transform is not None:
+            random.seed(seed)
             img = self.transform(img)
+
         if self.use_salience and not self.use_parsing:
             salience_path = osp.join(self.salience_base_path, get_image_name(img_path) + '.npy')
-            salience_img = preprocess_salience(np.load(salience_path))
+
+            if self.transform_salience_parsing == None:
+                salience_img = preprocess_salience(read_numpy_file(salience_path))
+            else:
+                random.seed(seed)
+                salience_img = self.transform_salience_parsing(Image.fromarray(read_numpy_file(salience_path)))
+                salience_img = salience_img.resize((64, 128), Image.BILINEAR)
+                salience_img = np.array(salience_img)
+
             return img, pid, camid, salience_img, img_path
         elif not self.use_salience and self.use_parsing:
             parsing_path = osp.join(self.parsing_base_path, get_image_name(img_path) + '.npy')
-            parsing_img = decode_parsing(torch.tensor(np.load(parsing_path)))
+            parsing_img = decode_parsing(torch.tensor(read_numpy_file(parsing_path)))
+
+            if self.transform_salience_parsing != None:
+                new_parsing_img = []
+                for slide in parsing_img:
+                    random.seed(seed)
+                    img_i = self.transform_salience_parsing(Image.fromarray(slide))
+                    img_i = img_i.resize((64, 128), Image.BILINEAR)
+                    img_i = np.array(img_i)
+                    new_parsing_img.append(img_i)
+                parsing_img = np.array(new_parsing_img)
+
             return img, pid, camid, parsing_img, img_path
+
         elif self.use_parsing and self.use_salience:
             parsing_path = osp.join(self.parsing_base_path, get_image_name(img_path) + '.npy')
             salience_path = osp.join(self.salience_base_path, get_image_name(img_path) + '.npy')
-            parsing_img = decode_parsing(torch.tensor(np.load(parsing_path)))
-            salience_img = preprocess_salience(np.load(salience_path))
+
+            if self.transform_salience_parsing == None:
+                salience_img = preprocess_salience(read_numpy_file(salience_path))
+                parsing_img = decode_parsing(torch.tensor(read_numpy_file(parsing_path)))
+            else:
+                random.seed(seed)
+                salience_img = self.transform_salience(Image.fromarray(read_numpy_file(salience_path)))
+                salience_img = salience_img.resize((64, 128), Image.BILINEAR)
+                salience_img = np.array(salience_img)
+
+                parsing_img = decode_parsing(torch.tensor(read_numpy_file(parsing_path)))
+                new_parsing_img = []
+                for slide in parsing_img:
+                    random.seed(seed)
+                    img_i = self.transform_salience_parsing(Image.fromarray(slide))
+                    img_i = img_i.resize((64, 128), Image.BILINEAR)
+                    img_i = np.array(img_i)
+                    new_parsing_img.append(img_i)
+                parsing_img = np.array(new_parsing_img)
+
             return img, pid, camid, salience_img, parsing_img, img_path
         else:
             return img, pid, camid, img_path
