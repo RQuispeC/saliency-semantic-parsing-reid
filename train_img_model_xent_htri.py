@@ -24,8 +24,6 @@ from samplers import RandomIdentitySampler
 from optimizers import init_optim
 from re_ranking_ranklist import re_ranking
 
-import cv2
-
 
 parser = argparse.ArgumentParser(description='Train image model with cross entropy loss and hard triplet loss')
 # Datasets
@@ -136,6 +134,11 @@ def main():
         T.ToTensor(),
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
+    
+    transform_salience_parsing = T.Compose([
+        T.Random2DTranslation(args.height, args.width),
+        T.RandomHorizontalFlip(),
+    ])
 
     transform_test = T.Compose([
         T.Resize((args.height, args.width)),
@@ -150,7 +153,7 @@ def main():
     use_re_ranking = True if args.use_re_ranking else False
 
     trainloader = DataLoader(
-        ImageDataset(dataset.train, transform=transform_train, use_salience = use_salience, use_parsing = use_parsing, salience_base_path = dataset.salience_train_dir, parsing_base_path = dataset.parsing_train_dir),
+        ImageDataset(dataset.train, transform=transform_train, use_salience = use_salience, use_parsing = use_parsing, salience_base_path = dataset.salience_train_dir, parsing_base_path = dataset.parsing_train_dir, transform_salience_parsing = transform_salience_parsing),
         sampler=RandomIdentitySampler(dataset.train, num_instances=args.num_instances),
         batch_size=args.train_batch, num_workers=args.workers,
         pin_memory=pin_memory, drop_last=True,
