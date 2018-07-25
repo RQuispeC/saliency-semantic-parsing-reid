@@ -7,7 +7,7 @@ import torch.utils.model_zoo as model_zoo
 import os
 import sys
 
-__all__ = ['InceptionV4ReID', 'InceptionV4ReID_salience', 'InceptionV4ReID_parsing']
+__all__ = ['InceptionV4ReID', 'InceptionV4ReID_salience', 'InceptionV4ReID_parsing', 'InceptionV4ReID_full']
 
 """
 Code imported from https://github.com/Cadene/pretrained-models.pytorch
@@ -464,6 +464,53 @@ class InceptionV4ReID_parsing(nn.Module):
         parsing_feat = parsing_feat.view(parsing_feat.size()[0], parsing_feat.size()[1] * parsing_feat.size()[2]).cuda() / float(channel_size)
         #join features
         f = torch.cat((x, parsing_feat), dim=1)
+
+        if not self.training:
+            return f
+        y = self.classifier(f)
+
+        if self.loss == {'xent'}:
+            return y
+        elif self.loss == {'xent', 'htri'}:
+            return y, f
+        elif self.loss == {'cent'}:
+            return y, f
+        elif self.loss == {'ring'}:
+            return y, f
+        else:
+            raise KeyError("Unsupported loss: {}".format(self.loss))
+
+class InceptionV4ReID_full(nn.Module):
+    def __init__(self, num_classes, loss={'xent'}, **kwargs):
+        super(InceptionV4ReID_full, self).__init__()
+        self.loss = loss
+        base = inceptionv4()
+        base_features = list(base.features.children())
+        self.x18 = nn.Sequential(*base_features[:18])
+        self.x19 = base_features[18]
+        self.x20= base_features[19]
+        self.x21 = base_features[20]
+        self.x22 = base_features[21]
+        self.classifier = nn.Linear(2560, num_classes)
+        self.feat_dim = 2560 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
+
+    def forward(self, x):
+        x18 = self.x18(x)
+        x = self.x19(x18)
+        x = self.x20(x)
+        x = self.x21(x)
+        x = self.x22(x)
+
+        x = F.avg_pool2d(x, x.size()[2:])
+        x = x.view(x.size(0), -1)
+
+        #use x18 as feature
+        x18_feat = F.avg_pool2d(x18, x18.size()[2:]).view(x18.size()[:2])
+
+        #join features
+        f = torch.cat((x, x18_feat), dim=1)
 
         if not self.training:
             return f

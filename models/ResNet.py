@@ -6,7 +6,7 @@ from torch.nn import functional as F
 import torchvision
 
 
-__all__ = ['ResNet50', 'ResNet50_salience', 'ResNet50_parsing', 'ResNet50M', 'ResNet50M_salience', 'ResNet50M_parsing']
+__all__ = ['ResNet50', 'ResNet50_salience', 'ResNet50_parsing', 'ResNet50M', 'ResNet50M_salience', 'ResNet50M_parsing', 'ResNet50_full', 'ResNet50M_full']
 
 class ResNet50(nn.Module):
     """
@@ -171,6 +171,70 @@ class ResNet50_parsing(nn.Module):
         parsing_feat = parsing_feat.view(parsing_feat.size()[0], parsing_feat.size()[1] * parsing_feat.size()[2]).cuda() / float(channel_size)
         #join features
         combofeat = torch.cat((x5c_feat, parsing_feat), dim=1)
+
+        if not self.training:
+            return combofeat
+        prelogits = self.classifier(combofeat)
+        
+        if self.loss == {'xent'}:
+            return prelogits
+        elif self.loss == {'xent', 'htri'}:
+            return prelogits, combofeat
+        elif self.loss == {'cent'}:
+            return prelogits, combofeat
+        elif self.loss == {'ring'}:
+            return prelogits, combofeat
+        else:
+            raise KeyError("Unsupported loss: {}".format(self.loss))
+
+class ResNet50_full(nn.Module):
+    def __init__(self, num_classes=0, loss={'xent'}, **kwargs):
+        super(ResNet50_full, self).__init__()
+        self.loss = loss
+        resnet50 = torchvision.models.resnet50(pretrained=True)
+        base = nn.Sequential(*list(resnet50.children())[:-2])
+        self.layers1 = nn.Sequential(base[0], base[1], base[2])
+        self.layers2 = nn.Sequential(base[3], base[4])
+        self.layers3 = base[5]
+        self.layers4a = base[6][0]
+        self.layers4b = base[6][1]
+        self.layers4c = base[6][2]
+        self.layers4d = base[6][3]
+        self.layers4e = base[6][4]
+        self.layers4f = base[6][5]
+        self.layers5a = base[7][0]
+        self.layers5b = base[7][1]
+        self.layers5c = base[7][2]
+        self.classifier = nn.Linear(3072, num_classes)
+        self.feat_dim = 3072 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
+
+    def forward(self, x):
+        '''
+        x: batch of input images
+        salince_mask: batch of 2D tensor
+        '''
+        x1 = self.layers1(x)
+        x2 = self.layers2(x1)
+        x3 = self.layers3(x2)
+        x4a = self.layers4a(x3)
+        x4b = self.layers4b(x4a)
+        x4c = self.layers4c(x4b)
+        x4d = self.layers4d(x4c)
+        x4e = self.layers4e(x4d)
+        x4f = self.layers4f(x4e)
+        x5a = self.layers5a(x4f)
+        x5b = self.layers5b(x5a)
+        x5c = self.layers5c(x5b)
+
+        x5c_feat = F.avg_pool2d(x5c, x5c.size()[2:]).view(x5c.size(0), x5c.size(1))
+
+        #use x4f as feature
+        x4f_feat = F.avg_pool2d(x4f, x4f.size()[2:]).view(x4f.size()[:2])
+
+        #join features
+        combofeat = torch.cat((x5c_feat, x4f_feat), dim=1)
 
         if not self.training:
             return combofeat
@@ -407,6 +471,81 @@ class ResNet50M_parsing(nn.Module):
             return prelogits, combofeat
         else:
             raise KeyError("Unsupported loss: {}".format(self.loss))
+
+class ResNet50M_full(nn.Module):
+    """ResNet50m + mid-level features + weighting of mid-level features and x4f mid features
+    """
+    def __init__(self, num_classes=0, loss={'xent'}, **kwargs):
+        super(ResNet50M_full, self).__init__()
+        self.loss = loss
+        resnet50 = torchvision.models.resnet50(pretrained=True)
+        base = nn.Sequential(*list(resnet50.children())[:-2])
+        self.layers1 = nn.Sequential(base[0], base[1], base[2])
+        self.layers2 = nn.Sequential(base[3], base[4])
+        self.layers3 = base[5]
+        self.layers4a = base[6][0]
+        self.layers4b = base[6][1]
+        self.layers4c = base[6][2]
+        self.layers4d = base[6][3]
+        self.layers4e = base[6][4]
+        self.layers4f = base[6][5]
+        self.layers5a = base[7][0]
+        self.layers5b = base[7][1]
+        self.layers5c = base[7][2]
+        self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
+        self.classifier = nn.Linear(4096, num_classes)
+        self.feat_dim = 4096 # feature dimension
+        self.use_salience = False
+        self.use_parsing = False
+
+    def forward(self, x):
+        '''
+        x: batch of input images
+        salince_mask: batch of 2D tensor
+        parsing_maks: batch of 3D tensor (various parsing masks per image)
+        '''
+        x1 = self.layers1(x)
+        x2 = self.layers2(x1)
+        x3 = self.layers3(x2)
+        x4a = self.layers4a(x3)
+        x4b = self.layers4b(x4a)
+        x4c = self.layers4c(x4b)
+        x4d = self.layers4d(x4c)
+        x4e = self.layers4e(x4d)
+        x4f = self.layers4f(x4e)
+        x5a = self.layers5a(x4f)
+        x5b = self.layers5b(x5a)
+        x5c = self.layers5c(x5b)
+
+        x5a_feat = F.avg_pool2d(x5a, x5a.size()[2:]).view(x5a.size(0), x5a.size(1))
+        x5b_feat = F.avg_pool2d(x5b, x5b.size()[2:]).view(x5b.size(0), x5b.size(1))
+        x5c_feat = F.avg_pool2d(x5c, x5c.size()[2:]).view(x5c.size(0), x5c.size(1))
+        #print("4c", x4c.size()) #output [32, 1024, 16, 8]
+
+        midfeat = torch.cat((x5a_feat, x5b_feat), dim=1)
+        midfeat = self.fc_fuse(midfeat)
+
+        #use x4f as feature
+        x4f_feat = F.avg_pool2d(x4f, x4f.size()[2:]).view(x4f.size()[:2])
+
+        #join features
+        combofeat = torch.cat((x5c_feat, midfeat, x4f_feat), dim=1)
+
+        if not self.training:
+            return combofeat
+        prelogits = self.classifier(combofeat)
+        
+        if self.loss == {'xent'}:
+            return prelogits
+        elif self.loss == {'xent', 'htri'}:
+            return prelogits, combofeat
+        elif self.loss == {'cent'}:
+            return prelogits, combofeat
+        elif self.loss == {'ring'}:
+            return prelogits, combofeat
+        else:
+            raise KeyError("Unsupported loss: {}".format(self.loss))
+
 
 class multi_ResNet50M_v1(nn.Module):
     """ResNet50 + mid-level features.

@@ -25,6 +25,13 @@ __factory = {
     'resnext101': ResNeXt101_32x4d,
     'resnext101-salience': ResNeXt101_32x4d_salience, 
     'resnext101-parsing': ResNeXt101_32x4d_parsing,
+
+    'resnet50-full': ResNet50_full,
+    'densenet121-full': DenseNet121_full,
+    'resnet50m-full': ResNet50M_full,
+    'xception-full': Xception_full,
+    'inceptionv4-full': InceptionV4ReID_full,
+    
 }
 
 __use_salience = {
@@ -46,6 +53,12 @@ __use_salience = {
     'resnext101': False,
     'resnext101-salience': True, 
     'resnext101-parsing': False,
+
+    'resnet50-full': False,
+    'densenet121-full': False,
+    'resnet50m-full': False,
+    'xception-full': False,
+    'inceptionv4-full': False,
 }
 
 __use_parsing = {
@@ -67,6 +80,12 @@ __use_parsing = {
     'resnext101': False,
     'resnext101-salience': False,
     'resnext101-parsing': True,
+
+    'resnet50-full': False,
+    'densenet121-full': False,
+    'resnet50m-full': False,
+    'xception-full': False,
+    'inceptionv4-full': False,
 }
 
 def get_names():

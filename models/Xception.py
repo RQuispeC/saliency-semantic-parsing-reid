@@ -5,7 +5,7 @@ from torch import nn
 from torch.nn import functional as F
 import torchvision
 
-__all__ = ['Xception', 'Xception_salience', 'Xception_parsing']
+__all__ = ['Xception', 'Xception_salience', 'Xception_parsing', 'Xception_full']
 
 class ConvBlock(nn.Module):
     """Basic convolutional block:
@@ -273,6 +273,46 @@ class Xception_parsing(nn.Module):
         parsing_feat = parsing_feat.view(parsing_feat.size()[0], parsing_feat.size()[1] * parsing_feat.size()[2]).cuda() / float(channel_size)
 
         x = torch.cat((x, parsing_feat), dim = 1)
+        if not self.training:
+            return x
+
+        y = self.classifier(x)
+
+        if self.loss == {'xent'}:
+            return y
+        elif self.loss == {'xent', 'htri'}:
+            return y, x
+        else:
+            raise KeyError("Unsupported loss: {}".format(self.loss))
+
+class Xception_full(nn.Module):
+    """Xception
+
+    Reference:
+    Chollet. Xception: Deep Learning with Depthwise Separable Convolutions. CVPR 2017.
+    """
+    def __init__(self, num_classes, loss={'xent'}, num_mid_flows=8, **kwargs):
+        super(Xception_full, self).__init__()
+        self.loss = loss
+
+        self.entryflow = EntryFLow(nchannels=[32, 64, 128, 256, 728])
+        self.midflow = MidFlow(728, 728, 8)
+        self.exitflow = ExitFlow(728, nchannels=[728, 1024, 1536, 2048])
+        self.classifier = nn.Linear(2776, num_classes)
+        self.feat_dim = 2776
+        self.use_salience = False
+        self.use_parsing = False
+
+    def forward(self, x):
+        x = self.entryflow(x)
+        xm = self.midflow(x)
+        x = self.exitflow(xm)
+
+        #use xm as feature
+        xm_feat = F.avg_pool2d(xm, xm.size()[2:]).view(xm.size()[:2])
+
+        #join features
+        x = torch.cat((x, xm_feat), dim = 1)
         if not self.training:
             return x
 
