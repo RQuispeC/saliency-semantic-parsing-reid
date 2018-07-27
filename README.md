@@ -1,5 +1,6 @@
 TODO:
 * add bibtex cite and link to paper
+* add LICENSE
 * review documentation before changing repo to public
 
 # Enhanced Person Re-Identification Based on Saliency and Semantic Parsing with Deep Neural Network Models
@@ -29,7 +30,7 @@ Other library versions and OS may need small changes.
 Create a directory to store reid datasets under this repo via
 
 ```bash
-cd deep-person-reid/
+cd saliency-semantic-parsing-reid/
 mkdir data/
 ```
 
@@ -136,7 +137,7 @@ Note that the complete framework needs to train its `-salience` and `-parsing` s
 
 ```bash
 
-python train_imgreid_xent_htri.py -d market1501 -a resnet50-salience --optim adam --lr 0.0003 --max-epoch 60 --stepsize 20 --train-batch 32 --test-batch 100 --save-dir log/resnet50-xent-market1501 --gpu-devices 0
+python train_img_reid_xent_htri.py -d market1501 -a resnet50-salience --optim adam --lr 0.0003 --max-epoch 60 --stepsize 20 --train-batch 32 --test-batch 100 --save-dir log/resnet50-xent-market1501 --gpu-devices 0
 
 ```
 

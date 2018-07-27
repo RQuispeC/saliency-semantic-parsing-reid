@@ -7,9 +7,11 @@ import sys
 
 import pylab as plt
 import gc
-import cv2
 import os.path as osp
-import os 
+import os
+
+from utils import read_image
+from PIL import ImageDraw, Image
 
 def eval_cuhk03(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, N=100):
     """Evaluation with cuhk03 metric
@@ -89,19 +91,23 @@ def plot_rank(qimg_path, gimg_paths, order, matches, save_dir = "", epoch = - 1)
     a = fig.add_subplot(1, rank + 1, 1)
     a.set_title("QUERY")
     a.axis("off")
-    img = cv2.imread(qimg_path)
-    img = cv2.resize(img, (64, 128))
-    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    img = read_image(qimg_path)
+    img = img.resize((64, 128), Image.BILINEAR)
+    plt.imshow(img)
     for ind, gimg_path in enumerate(gimg_paths):
         a = fig.add_subplot(1, rank + 1, ind + 2)
         message = "CORRECT" if matches[ind] == 1 else "WRONG"
-        color = (0, 255, 0) if matches[ind] == 1 else (0, 0, 255)
+        color = "green" if matches[ind] == 1 else "red"
         a.set_title(message)
         a.axis("off")
-        img = cv2.imread(gimg_path)
-        img = cv2.resize(img, (64, 128))
-        img = cv2.rectangle(img, (0, 0), (img.shape[1], img.shape[0]), color = color, thickness = 4)
-        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        img = read_image(gimg_path)
+        img = img.resize((64, 128), Image.BILINEAR)
+        draw = ImageDraw.Draw(img)
+        draw.rectangle([(0, 0), (img.size[0] - 1, img.size[1] - 1)], outline = color)
+        draw.rectangle([(1, 1), (img.size[0] - 2, img.size[1] - 2)], outline = color)
+        draw.rectangle([(2, 2), (img.size[0] - 3, img.size[1] - 3)], outline = color)
+        plt.imshow(img)
+        del draw
 
     save_dir = osp.join(save_dir, '{}'.format(epoch))
     if not os.path.exists(save_dir):
