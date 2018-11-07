@@ -6,7 +6,7 @@ from torch.nn import functional as F
 import torchvision
 
 
-__all__ = ['ResNet50', 'ResNet50_salience', 'ResNet50_parsing', 'ResNet50M', 'ResNet50M_salience', 'ResNet50M_parsing', 'ResNet50_full', 'ResNet50M_full']
+__all__ = ['ResNet50', 'ResNet50_salience', 'ResNet50_parsing', 'ResNet50M', 'ResNet50M_salience', 'ResNet50M_parsing', 'ResNet50_full', 'ResNet50M_full', 'ResNet50M_salience_layer', 'ResNet50M_parsing_layer']
 
 class ResNet50(nn.Module):
     """
@@ -391,7 +391,6 @@ class ResNet50M_salience(nn.Module):
         else:
             raise KeyError("Unsupported loss: {}".format(self.loss))
 
-
 class ResNet50M_parsing(nn.Module):
     """ResNet50 + mid-level features + weighting of mid-level features and semantic parsing maps
     """
@@ -530,6 +529,187 @@ class ResNet50M_full(nn.Module):
 
         #join features
         combofeat = torch.cat((x5c_feat, midfeat, x4f_feat), dim=1)
+
+        if not self.training:
+            return combofeat
+        prelogits = self.classifier(combofeat)
+        
+        if self.loss == {'xent'}:
+            return prelogits
+        elif self.loss == {'xent', 'htri'}:
+            return prelogits, combofeat
+        elif self.loss == {'cent'}:
+            return prelogits, combofeat
+        elif self.loss == {'ring'}:
+            return prelogits, combofeat
+        else:
+            raise KeyError("Unsupported loss: {}".format(self.loss))
+
+##### RESNET50M models for comparison of different layers
+class ResNet50M_salience_layer(nn.Module):
+    """ResNet50m + mid-level features + weighting of mid-level features and salience maps
+    """
+    def __init__(self, num_classes=0, loss={'xent'}, **kwargs):
+        super(ResNet50M_salience_layer, self).__init__()
+        self.mid_layer = kwargs['mid_layer']
+        self.loss = loss
+        resnet50 = torchvision.models.resnet50(pretrained=True)
+        base = nn.Sequential(*list(resnet50.children())[:-2])
+        self.layers1 = nn.Sequential(base[0], base[1], base[2])
+        self.layers2 = nn.Sequential(base[3], base[4])
+        self.layers3 = base[5]
+        self.layers4 = nn.Sequential(base[6][0], base[6][1], base[6][2], base[6][3], base[6][4], base[6][5])
+        self.layers5a = base[7][0]
+        self.layers5b = base[7][1]
+        self.layers5c = base[7][2]
+        self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
+        if self.mid_layer == 'layer1':
+            self.feat_dim = 3136
+        elif self.mid_layer == 'layer2':
+            self.feat_dim = 3328
+        elif self.mid_layer == 'layer3':
+            self.feat_dim = 3584
+        elif self.mid_layer == 'layer4':
+            self.feat_dim = 4096
+        else:
+            raise KeyError("Unsupported mid layer: {}".format(self.mid_layer))
+        self.classifier = nn.Linear(self.feat_dim, num_classes)
+        self.use_salience = True
+        self.use_parsing = False
+        
+
+    def forward(self, x, salience_masks):
+        '''
+        x: batch of input images
+        salince_mask: batch of 2D tensor
+        parsing_maks: batch of 3D tensor (various parsing masks per image)
+        '''
+        x1 = self.layers1(x)
+        print("x1.shape", x1.size())
+        x2 = self.layers2(x1)
+        print("x2.shape", x2.size())
+        x3 = self.layers3(x2)
+        print("x3.shape", x3.size())
+        x4 = self.layers4(x3)
+        print("x4.shape", x4.size())
+        x5a = self.layers5a(x4)
+        x5b = self.layers5b(x5a)
+        x5c = self.layers5c(x5b)
+
+        x5a_feat = F.avg_pool2d(x5a, x5a.size()[2:]).view(x5a.size(0), x5a.size(1))
+        x5b_feat = F.avg_pool2d(x5b, x5b.size()[2:]).view(x5b.size(0), x5b.size(1))
+        x5c_feat = F.avg_pool2d(x5c, x5c.size()[2:]).view(x5c.size(0), x5c.size(1))
+
+        midfeat = torch.cat((x5a_feat, x5b_feat), dim=1)
+        midfeat = self.fc_fuse(midfeat)
+
+        #upsample feature map to the same size of salience/parsing maps
+        if self.mid_layer == 'layer1':
+            salience_feat = F.upsample(x1, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
+        elif self.mid_layer == 'layer2':
+            salience_feat = F.upsample(x2, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
+        elif self.mid_layer == 'layer3':
+            salience_feat = F.upsample(x3, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
+        elif self.mid_layer == 'layer4':
+            salience_feat = F.upsample(x4, size = (salience_masks.size()[-2], salience_masks.size()[-1]), mode = 'bilinear')
+        #reshape tensors such that we can use matrix product as operator and avoid using loops
+        channel_size = salience_feat.size()[2] * salience_feat.size()[3]
+        salience_masks = salience_masks.cuda()
+        salience_masks = salience_masks.view(salience_masks.size()[0], channel_size, 1)
+        salience_feat = salience_feat.view(salience_feat.size()[0], salience_feat.size()[1], channel_size)
+        salience_feat  = torch.bmm(salience_feat, salience_masks)#instead of replicating we use matrix product
+        #average pooling
+        salience_feat = salience_feat.view(salience_feat.size()[:2]) / float(channel_size)
+        #join features
+        print("expected size", x5c_feat.size(), midfeat.size(), salience_feat.size())
+        combofeat = torch.cat((x5c_feat, midfeat, salience_feat), dim=1)
+
+        if not self.training:
+            return combofeat
+        prelogits = self.classifier(combofeat)
+
+        if self.loss == {'xent'}:
+            return prelogits
+        elif self.loss == {'xent', 'htri'}:
+            return prelogits, combofeat
+        elif self.loss == {'cent'}:
+            return prelogits, combofeat
+        elif self.loss == {'ring'}:
+            return prelogits, combofeat
+        else:
+            raise KeyError("Unsupported loss: {}".format(self.loss))
+
+class ResNet50M_parsing_layer(nn.Module):
+    """ResNet50 + mid-level features + weighting of mid-level features and semantic parsing maps
+    """
+    def __init__(self, num_classes=0, loss={'xent'}, **kwargs):
+        super(ResNet50M_parsing_layer, self).__init__()
+        self.mid_layer = kwargs['mid_layer']
+        self.loss = loss
+        resnet50 = torchvision.models.resnet50(pretrained=True)
+        base = nn.Sequential(*list(resnet50.children())[:-2])
+        self.layers1 = nn.Sequential(base[0], base[1], base[2])
+        self.layers2 = nn.Sequential(base[3], base[4])
+        self.layers3 = base[5]
+        self.layers4 = nn.Sequential(base[6][0], base[6][1], base[6][2], base[6][3], base[6][4], base[6][5])
+        self.layers5a = base[7][0]
+        self.layers5b = base[7][1]
+        self.layers5c = base[7][2]
+        self.fc_fuse = nn.Sequential(nn.Linear(4096, 1024), nn.BatchNorm1d(1024), nn.ReLU())
+        if self.mid_layer == 'layer1':
+            self.feat_dim = 3392
+        elif self.mid_layer == 'layer2':
+            self.feat_dim = 4352
+        elif self.mid_layer == 'layer3':
+            self.feat_dim = 5632
+        elif self.mid_layer == 'layer4':
+            self.feat_dim = 8192
+        else:
+            raise KeyError("Unsupported mid layer: {}".format(self.mid_layer))
+        self.classifier = nn.Linear(self.feat_dim, num_classes)
+        self.use_salience = False
+        self.use_parsing = True
+
+    def forward(self, x, parsing_masks = None):
+        '''
+        x: batch of input images
+        salince_mask: batch of 2D tensor
+        parsing_maks: batch of 3D tensor (various parsing masks per image)
+        '''
+        x1 = self.layers1(x)
+        x2 = self.layers2(x1)
+        x3 = self.layers3(x2)
+        x4 = self.layers4(x3)
+        x5a = self.layers5a(x4)
+        x5b = self.layers5b(x5a)
+        x5c = self.layers5c(x5b)
+
+        x5a_feat = F.avg_pool2d(x5a, x5a.size()[2:]).view(x5a.size(0), x5a.size(1))
+        x5b_feat = F.avg_pool2d(x5b, x5b.size()[2:]).view(x5b.size(0), x5b.size(1))
+        x5c_feat = F.avg_pool2d(x5c, x5c.size()[2:]).view(x5c.size(0), x5c.size(1))
+
+        midfeat = torch.cat((x5a_feat, x5b_feat), dim=1)
+        midfeat = self.fc_fuse(midfeat)
+
+        #upsample feature map to the same size of salience/parsing maps
+        if self.mid_layer == 'layer1':
+            parsing_feat = F.upsample(x1, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
+        elif self.mid_layer == 'layer2':
+            parsing_feat = F.upsample(x2, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
+        elif self.mid_layer == 'layer3':
+            parsing_feat = F.upsample(x3, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
+        elif self.mid_layer == 'layer4':
+            parsing_feat = F.upsample(x4, size = (parsing_masks.size()[-2], parsing_masks.size()[-1]), mode = 'bilinear')
+
+        channel_size = parsing_feat.size()[2] * parsing_feat.size()[3]
+        parsing_masks = parsing_masks.view(parsing_masks.size()[0], parsing_masks.size()[1], channel_size)
+        parsing_masks = torch.transpose(parsing_masks, 1, 2)
+        parsing_feat = parsing_feat.view(parsing_feat.size()[0], parsing_feat.size()[1], channel_size)
+        parsing_feat = torch.bmm(parsing_feat, parsing_masks)
+        #average pooling
+        parsing_feat = parsing_feat.view(parsing_feat.size()[0], parsing_feat.size()[1] * parsing_feat.size()[2]).cuda() / float(channel_size)
+        #join features
+        combofeat = torch.cat((x5c_feat, midfeat, parsing_feat), dim=1)
 
         if not self.training:
             return combofeat
