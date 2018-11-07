@@ -585,13 +585,9 @@ class ResNet50M_salience_layer(nn.Module):
         parsing_maks: batch of 3D tensor (various parsing masks per image)
         '''
         x1 = self.layers1(x)
-        print("x1.shape", x1.size())
         x2 = self.layers2(x1)
-        print("x2.shape", x2.size())
         x3 = self.layers3(x2)
-        print("x3.shape", x3.size())
         x4 = self.layers4(x3)
-        print("x4.shape", x4.size())
         x5a = self.layers5a(x4)
         x5b = self.layers5b(x5a)
         x5c = self.layers5c(x5b)
@@ -621,7 +617,6 @@ class ResNet50M_salience_layer(nn.Module):
         #average pooling
         salience_feat = salience_feat.view(salience_feat.size()[:2]) / float(channel_size)
         #join features
-        print("expected size", x5c_feat.size(), midfeat.size(), salience_feat.size())
         combofeat = torch.cat((x5c_feat, midfeat, salience_feat), dim=1)
 
         if not self.training:
