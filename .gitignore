@@ -1,6 +1,6 @@
 #local files
 .vscode
-log
+log*
 data
 Makefile
 saved-models
