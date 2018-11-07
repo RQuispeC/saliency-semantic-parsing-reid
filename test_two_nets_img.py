@@ -48,6 +48,7 @@ parser.add_argument('--test-batch', default=32, type=int, help="test batch size"
 # Architecture
 parser.add_argument('-a1', '--arch1', type=str, default='resnet50', choices=models.get_names())
 parser.add_argument('-a2', '--arch2', type=str, default='resnet50', choices=models.get_names())
+parser.add_argument('--mid-layer', type=str, default='layer4')
 # Miscs
 parser.add_argument('--print-freq', type=int, default=10, help="print frequency")
 parser.add_argument('--seed', type=int, default=1, help="manual seed")
@@ -130,10 +131,10 @@ def main():
     )
 
     print("Initializing model: {}".format(args.arch1))
-    model1 = models.init_model(name=args.arch1, num_classes=dataset.num_train_pids, loss={'xent', 'htri'})
+    model1 = models.init_model(name=args.arch1, num_classes=dataset.num_train_pids, loss={'xent', 'htri'}, mid_layer = args.mid_layer)
     print("Model size: {:.5f}M".format(sum(p.numel() for p in model1.parameters())/1000000.0))
     print("Initializing model: {}".format(args.arch2))
-    model2 = models.init_model(name=args.arch2, num_classes=dataset.num_train_pids, loss={'xent', 'htri'})
+    model2 = models.init_model(name=args.arch2, num_classes=dataset.num_train_pids, loss={'xent', 'htri'}, mid_layer = args.mid_layer)
     print("Model size: {:.5f}M".format(sum(p.numel() for p in model2.parameters())/1000000.0))
 
     print("Loading checkpoint from '{}'".format(args.resume1))
