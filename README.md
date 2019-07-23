@@ -1,24 +1,25 @@
-TODO:
-* add bibtex cite and link to paper
-* add LICENSE
-* review documentation before changing repo to public
-
 # Enhanced Person Re-Identification Based on Saliency and Semantic Parsing with Deep Neural Network Models
 
-This repo implements our paper [*Enhanced Person Re-Identification Based on Saliency and Semantic Parsing with Deep Neural Network Models*]() and it has been released for academic pourposes only, please cite if it is useful in your research
+This repo implements our paper [*Enhanced Person Re-Identification Based on Saliency and Semantic Parsing with Deep Neural Network Models*](https://arxiv.org/abs/1807.05618), please cite if it is useful in your research.
 
 ```
-BIBTEX FORMAT CITE
+@article{quispe2019enhanced,
+  title={Enhanced Person Re-Identification Based on Saliency and Semantic Parsing with Deep Neural Network Models},
+  author={Quispe, Rodolfo and Pedrini, Helio},
+  journal={Image and Vision Computing},
+  year={2019},
+  publisher={Elsevier}
+}
 ```
 
 This repo explains dependencies, data preparation, training and testing for every module of our network:
 
 ![proposed framework](framework.png)
 
-## Dependecies
-The implementation has been tested under a Linux enviroment with:
+## Dependencies
+The implementation has been tested under a Linux environment with:
 
-* Python 2
+* Python 3
 * PyTorch (V0.4.0)
 * Numpy (V1.14.3)
 * OpenCV (V3.4.0)
@@ -98,7 +99,7 @@ cuhk03-np/
 **DukeMTMC-reID** [10, 11]:
 1. Create a directory under `data/` called `dukemtmc-reid`.
 2. Download dataset `DukeMTMC-reID.zip` from https://github.com/layumi/DukeMTMC-reID_evaluation#download-dataset, extract the zip file and put the needed directories inside `data/dukemtmc-reid`. 
-3. Download the precomputed saliency and semantic parsing maps from [here](https://drive.google.com/file/d/14fk9lOQzcJaJBCTsLmXaAcwHkh6LLjwu/view?usp=sharing), extract the zip under the directory `data/dukemtmc-reid`. Finally, the datas structure would look like
+3. Download the precomputed saliency and semantic parsing maps from [here](https://drive.google.com/file/d/14fk9lOQzcJaJBCTsLmXaAcwHkh6LLjwu/view?usp=sharing), extract the zip under the directory `data/dukemtmc-reid`. Finally, the data structure would look like
 ```
 dukemtmc-reid/
 	bounding_box_train/
@@ -129,9 +130,9 @@ We use the parameter `-a` to specify the architecture, we support:
 * Inception-V4[6]: Use `-a inceptionv4`
 * Xception[7]: Use `-a xception`
 
-To train the network using backbones with salience use the sufix `-salience` in the network name (e.g. `-a resnet-salience`)
+To train the network using backbones with salience use the suffix `-salience` in the network name (e.g. `-a resnet-salience`)
 
-To train the network using backbones with semantic parsing use the sufix `-parsing` in the network name (e.g. `-a resnet-parsing`)
+To train the network using backbones with semantic parsing use the suffix `-parsing` in the network name (e.g. `-a resnet-parsing`)
 
 Note that the complete framework needs to train its `-salience` and `-parsing` subnets independently. For instance, to train ResNet50 combined with salience maps over Market1501 dataset run:
 
@@ -155,13 +156,13 @@ We have two different ways to test our network, one for individual subnets and t
 python train_imgreid_xent_htri.py -d market1501 -a resnet50-salience --resume saved-models/resnet-salience.pth.tar --evaluate --save-dir log/test-resnet-salience-market1501
 ```
 
-In orther to test the complete framework you need to first have to train its saliency and semantic parsing subnets, let's suppose that you already train ResNet with Market1501 and have their results in `saved-models/resnet-salience.pth.tar` and `saved-models/resnet-parsing.pth.tar` then run:
+In order to test the complete framework you need to first have to train its saliency and semantic parsing subnets, let's suppose that you already train ResNet with Market1501 and have their results in `saved-models/resnet-salience.pth.tar` and `saved-models/resnet-parsing.pth.tar` then run:
 
 ``` bash
 python test_two_nets_img.py -a1 resnet50-salience -a2 resnet50-parsing --resume1 saved-models/resnet-salience.pth.tar --resume2 saved-models/resnet-parsing.pth.tar --save-dir log/test-resnet-salience-parsing-market1501
 ```
 
-It is important that `-a1` specifies a architecture that uses salience and `-a2` an architecure that uses semantic parsing, otherwise, code will give an error.
+It is important that `-a1` specifies an architecture that uses salience and `-a2` an architecture that uses semantic parsing, otherwise, code will give an error.
 ## Results
 All models are initialized with imagenet pretrained weights.
 Results are presented using the format of `Rank1 (mAP)` in the following table
