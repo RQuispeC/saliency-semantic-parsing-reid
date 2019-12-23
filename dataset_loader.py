@@ -176,7 +176,7 @@ class ImageDataset(Dataset):
                 parsing_img = decode_parsing(torch.tensor(read_numpy_file(parsing_path)))
             else:
                 random.seed(seed)
-                salience_img = self.transform_salience(Image.fromarray(read_numpy_file(salience_path)))
+                salience_img = self.transform_salience_parsing(Image.fromarray(read_numpy_file(salience_path)))
                 salience_img = salience_img.resize((64, 128), Image.BILINEAR)
                 salience_img = np.array(salience_img)
 
